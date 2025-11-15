@@ -94,13 +94,37 @@ def get_recommendations(user_id: str):
         print(f"CRITICAL Error in recommendation logic for user {user_id}: {e}")
         return {"recommended_artwork": None, "recommended_artist": None}
 
-# --- 3. 图像分析的核心逻辑 ---
-def analyze_image_logic(file_stream):
+
+# --- 3. 定义所有的 API 接口 (路由) ---
+
+# 接口 A: 推荐系统
+@app.route('/recommend', methods=['GET'])
+def recommend_handler():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+    recommendations = get_recommendations(user_id)
+    return jsonify(recommendations)
+
+# 接口 B: 图像分析
+@app.route('/analyze-artwork', methods=['POST'])
+def analyze_artwork_handler():
+    # a. 检查文件是否存在
+    if 'artwork_image' not in request.files:
+        return jsonify({"error": "No image file provided"}), 400
+
+    # b. 从请求中获取文件对象
+    file = request.files['artwork_image']
+    
+    # c. 检查文件名
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
     try:
-        # c. 读取图片数据
+        # d. 读取图片数据
         img = Image.open(file.stream)
 
-        # d. 定义我们的“提示 (Prompt)”
+        # e. 定义我们的“提示 (Prompt)”
         prompt = """
         Analyze the attached image. First, determine if it is a piece of art (like a painting, sculpture, digital art, etc.) or just a regular photograph (like a selfie, a picture of food, a pet, etc.).
 
@@ -117,46 +141,20 @@ def analyze_image_logic(file_stream):
         Example tags: #portrait, #landscape, #stilllife, #colorful, #monochrome, #flower.
         """
 
-        # e. 把图片和提示一起发送给 Gemini API
-        response = model.generate_content([prompt, img])
+        # f. 把图片和提示一起发送给 Gemini API
+        response = gemini_model.generate_content([prompt, img])
 
-        # f. 解析 Gemini 返回的 JSON 结果
-        # Gemini 的返回结果可能包含一些 Markdown 格式，我们需要清理一下
+        # g. 解析 Gemini 返回的 JSON 结果
         cleaned_response = response.text.replace("```json", "").replace("```", "").strip()
         result_json = json.loads(cleaned_response)
 
-        # g. 返回最终结果给 Flutter App
+        # h. 返回最终结果给 Flutter App
         return jsonify(result_json), 200
 
     except Exception as e:
+        # 【核心修正】我们现在打印更详细的错误
         print(f"Error during image analysis: {e}")
         return jsonify({"error": "Failed to analyze image"}), 500
-
-
-# --- 4. 定义所有的 API 接口 (路由) ---
-
-# 接口 A: 推荐系统
-@app.route('/recommend', methods=['GET'])
-def recommend_handler():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
-    recommendations = get_recommendations(user_id)
-    return jsonify(recommendations)
-
-# 接口 B: 图像分析
-@app.route('/analyze-artwork', methods=['POST'])
-def analyze_artwork_handler():
-    if 'artwork_image' not in request.files:
-        return jsonify({"error": "No image file provided"}), 400
-    file = request.files['artwork_image']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    try:
-        result_json = analyze_image_logic(file.stream)
-        return jsonify(result_json), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to analyze image: {e}"}), 500
 
 
 # --- 4. 运行服务器 (仅用于本地测试) ---
