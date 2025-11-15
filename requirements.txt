@@ -3,3 +3,5 @@ gunicorn
 supabase
 pandas
 scikit-learn
+google-generativeai
+Pillow
