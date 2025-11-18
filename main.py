@@ -122,7 +122,13 @@ def analyze_artwork_handler():
 
     try:
         # d. 读取图片数据
-        img = Image.open(file.stream)
+        # --- 【验证步骤】读取文件内容并打印大小 ---
+        image_bytes = file.stream.read()
+        print(f">>> [SERVER LOG] Received image with size: {len(image_bytes)} bytes")
+        
+        # 从内存中的字节数据打开图片
+        img = Image.open(io.BytesIO(image_bytes))
+        # --- 结束验证 ---
 
         # e. 定义我们的“提示 (Prompt)”
         prompt = """
