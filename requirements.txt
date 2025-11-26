@@ -1,0 +1,7 @@
+flask
+supabase
+pandas
+scikit-learn
+google-generativeai>=0.7.0
+pillow
+gunicorn
